@@ -1,0 +1,11 @@
+[package]
+name = "ssh-demo"
+version = "0.1.0"
+authors = ["Howard Zhu <zhc_howard@hotmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ssh2 = "0.8.2"
+rpassword = "5.0.0"
