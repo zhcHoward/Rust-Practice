@@ -3,7 +3,7 @@ use regex::Regex;
 use rpassword;
 use ssh2::Session;
 use std::io::{stdin, stdout, Read, Write};
-use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{TcpListener, TcpStream};
 use std::process::exit;
 use std::process::Command;
 use structopt::StructOpt;
@@ -62,21 +62,25 @@ fn start_tcp_server() {
 
 fn setup_ssh_connection(username: &str, host: &str) -> Session {
     debug!("setup ssh connection");
-    let msg = format!("Please input password for {}: ", &username);
-    let pass = rpassword::read_password_from_tty(Some(&msg)).unwrap();
     let ssh_address = format!("{}:22", host);
     let tcp = TcpStream::connect(ssh_address).unwrap();
     let mut sess = Session::new().unwrap();
     sess.set_tcp_stream(tcp);
     sess.handshake().unwrap();
-    match sess.userauth_password(&username, &pass) {
-        Ok(_) => (),
-        Err(e) => {
-            println!("Password Wrong! {}", e.message());
-            exit(1);
+    match sess.userauth_agent(&username) {
+        Ok(_) => sess,
+        Err(_) => {
+            let msg = format!("Please input password for {}: ", &username);
+            let pass = rpassword::read_password_from_tty(Some(&msg)).unwrap();
+            match sess.userauth_password(&username, &pass) {
+                Ok(_) => sess,
+                Err(e) => {
+                    println!("Password Wrong! {}", e.message());
+                    exit(1);
+                }
+            }
         }
     }
-    sess
 }
 
 fn main() {
