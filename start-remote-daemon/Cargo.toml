@@ -7,10 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ssh2 = "0.8.2"
-rpassword = "5.0.0"
-regex = "1.3.9"
-structopt = "0.3.15"
+ssh2 = "0.8"
+rpassword = "5.0"
+regex = "1.3"
+structopt = "0.3"
+log4rs = "0.13"
+log = "0.4"
 
 [[bin]]
 name = "remote-demo"

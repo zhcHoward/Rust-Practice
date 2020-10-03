@@ -2,6 +2,9 @@ use std::env;
 use std::process::Command;
 
 fn main() {
+    // for (key, value) in env::vars() {
+    //     println!("{}: {}", key, value);
+    // }
     println!("main thread start");
     let mut command = Command::new("python3");
     let mut python_file = env::current_dir().unwrap();

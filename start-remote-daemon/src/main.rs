@@ -1,3 +1,4 @@
+use log::{debug, info};
 use regex::Regex;
 use rpassword;
 use ssh2::Session;
@@ -6,6 +7,7 @@ use std::net::{TcpListener, TcpStream};
 use std::process::exit;
 use std::process::Command;
 use structopt::StructOpt;
+mod logger;
 
 const TCP_PORT: usize = 8192;
 const COMMAND: &str = "remote-demo";
@@ -33,22 +35,27 @@ fn parse(raw: &str, pat: &Regex) -> Option<(String, String)> {
 }
 
 fn main() {
+    logger::init_logger();
+
     let opt = Opt::from_args();
-    // println!("{:?}", opt);
+    debug!("{:?}", opt);
     if opt.daemon {
+        debug!("start local daemon.");
         Command::new(COMMAND).spawn().unwrap();
         exit(0);
     }
     if opt.destination.as_str() == "" {
+        info!("Start TCP server...");
         let address = format!("0.0.0.0:{}", TCP_PORT);
         let listener = TcpListener::bind(address).unwrap();
-        let (mut stream, _) = listener.accept().unwrap();
+        let (mut stream, address) = listener.accept().unwrap();
+        info!("Recieved connection from {}", address);
         let mut buf = [0; 1024];
         let mut len: usize;
         loop {
             len = stream.read(&mut buf).unwrap();
             let content = std::str::from_utf8(&buf[..len]).unwrap();
-            println!("Received: {:?}", &buf[..len]);
+            debug!("Received: {}", content);
             if &buf[..len] == b"exit" {
                 break;
             }
@@ -66,6 +73,7 @@ fn main() {
         }
         Some((username, host)) => {
             // setup ssh connection
+            debug!("setup ssh connection");
             let msg = format!("Please input password for {}: ", &username);
             let pass = rpassword::read_password_from_tty(Some(&msg)).unwrap();
             let ssh_address = format!("{}:{}", host, 22);
@@ -81,12 +89,13 @@ fn main() {
                 }
             }
             let mut channel = sess.channel_session().unwrap();
-            println!("exec 'remote-demo -d'");
+            debug!("run command: 'remote-demo -d' on remote");
             channel.exec("remote-demo -d").unwrap();
-            println!("done");
             let mut s = String::new();
             channel.read_to_string(&mut s).unwrap();
+            debug!("close ssh connection");
             channel.wait_close().unwrap();
+            debug!("setup tcp connection on {} port", TCP_PORT);
             let tcp_address = format!("{}:{}", host, TCP_PORT);
             let mut stream = TcpStream::connect(tcp_address).unwrap();
             let prompt = "Send: ".as_bytes();
@@ -97,15 +106,17 @@ fn main() {
                 stdout().write(prompt).unwrap();
                 stdout().flush().unwrap();
                 len = stdin().read_line(&mut buf).unwrap();
+                debug!("user input: {}", &buf[..len - 1]);
                 stream.write(&buf[..len - 1].as_bytes()).unwrap();
-                // println!("msg {} sent", buf);
+                debug!("send message: {}", &buf[..len - 1]);
                 if &buf[..len - 1] == "exit" {
                     break;
                 }
                 buf.clear();
                 len = stream.read(&mut content).unwrap();
-                stdout().write(&content[..len]).unwrap();
-                stdout().write(&[b'\n']).unwrap();
+                let msg = std::str::from_utf8(&content[..len]).unwrap();
+                debug!("received message: {}", msg);
+                println!("{}", msg);
             }
         }
     }
