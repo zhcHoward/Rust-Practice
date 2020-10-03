@@ -91,10 +91,8 @@ fn main() {
             let mut channel = sess.channel_session().unwrap();
             debug!("run command: 'remote-demo -d' on remote");
             channel.exec("remote-demo -d").unwrap();
-            let mut s = String::new();
-            channel.read_to_string(&mut s).unwrap();
             debug!("close ssh connection");
-            channel.wait_close().unwrap();
+            channel.close().unwrap();
             debug!("setup tcp connection on {} port", TCP_PORT);
             let tcp_address = format!("{}:{}", host, TCP_PORT);
             let mut stream = TcpStream::connect(tcp_address).unwrap();
