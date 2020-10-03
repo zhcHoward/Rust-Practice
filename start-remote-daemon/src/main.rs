@@ -43,18 +43,21 @@ fn main() {
         let address = format!("0.0.0.0:{}", TCP_PORT);
         let listener = TcpListener::bind(address).unwrap();
         let (mut stream, _) = listener.accept().unwrap();
-        let mut content = String::new();
+        let mut buf = [0; 1024];
         let mut len: usize;
         loop {
-            len = stream.read_to_string(&mut content).unwrap();
-            if &content[..len] == "exit" {
+            len = stream.read(&mut buf).unwrap();
+            let content = std::str::from_utf8(&buf[..len]).unwrap();
+            println!("Received: {:?}", &buf[..len]);
+            if &buf[..len] == b"exit" {
                 break;
             }
-            content.insert_str(0, "Recieved: ");
+            let content = format!("Recieved: {}", content);
             stream.write(content.as_bytes()).unwrap();
         }
         exit(0);
     }
+
     let pattern = Regex::new(r"(?:(?P<user>[^@]+)@)?(?P<host>[^@]+)").unwrap();
     match parse(&opt.destination, &pattern) {
         None => {
@@ -78,23 +81,31 @@ fn main() {
                 }
             }
             let mut channel = sess.channel_session().unwrap();
+            println!("exec 'remote-demo -d'");
             channel.exec("remote-demo -d").unwrap();
+            println!("done");
+            let mut s = String::new();
+            channel.read_to_string(&mut s).unwrap();
             channel.wait_close().unwrap();
             let tcp_address = format!("{}:{}", host, TCP_PORT);
             let mut stream = TcpStream::connect(tcp_address).unwrap();
             let prompt = "Send: ".as_bytes();
             let mut buf = String::new();
+            let mut content = [0; 1024];
             let mut len: usize;
             loop {
                 stdout().write(prompt).unwrap();
                 stdout().flush().unwrap();
                 len = stdin().read_line(&mut buf).unwrap();
-                stream.write(&buf[..len].as_bytes()).unwrap();
-                if &buf[..len] == "exit" {
+                stream.write(&buf[..len - 1].as_bytes()).unwrap();
+                // println!("msg {} sent", buf);
+                if &buf[..len - 1] == "exit" {
                     break;
                 }
-                len = stream.read_to_string(&mut buf).unwrap();
-                stdout().write(&buf[..len].as_bytes()).unwrap();
+                buf.clear();
+                len = stream.read(&mut content).unwrap();
+                stdout().write(&content[..len]).unwrap();
+                stdout().write(&[b'\n']).unwrap();
             }
         }
     }
