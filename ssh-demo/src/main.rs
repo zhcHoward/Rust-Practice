@@ -7,7 +7,6 @@ extern crate rpassword;
 
 fn main() {
     let username = env::var("USER").unwrap();
-    println!();
     let pass = rpassword::read_password_from_tty(Some("Please input your password: ")).unwrap();
     let mut session = Session::new().unwrap();
     let stream = TcpStream::connect("192.168.1.47:22").unwrap();
